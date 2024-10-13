@@ -13,11 +13,11 @@ pico_add_extra_outputs(pico_inverter)
 pico_enable_stdio_usb(pico_inverter 1)
 pico_enable_stdio_uart(pico_inverter 0)
 
-pico_generate_pio_header(pico_inverter ${CMAKE_CURRENT_LIST_DIR}/src/pio/pwm.pio)
+# pico_generate_pio_header(pico_inverter ${CMAKE_CURRENT_LIST_DIR}/src/pio/pwm.pio)
 
 target_link_libraries(pico_inverter PRIVATE
         pico_stdlib
-        hardware_pio
+        hardware_pwm
         hardware_dma
         hardware_irq
 )
