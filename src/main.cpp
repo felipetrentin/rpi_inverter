@@ -4,66 +4,69 @@
 #include "hardware/pio.h"
 #include "hardware/gpio.h"
 #include "pwm.pio.h"
-#define TRIG_PIN 2
-int pwm_dma_chan;
 
-const uint32_t lookup_table[339] = {
-0x400, 0x412, 0x425, 0x438, 0x44b, 0x45e, 0x471, 0x484,
-0x497, 0x4a9, 0x4bc, 0x4cf, 0x4e1, 0x4f4, 0x506, 0x518,
-0x52b, 0x53d, 0x54f, 0x561, 0x572, 0x584, 0x595, 0x5a7,
-0x5b8, 0x5c9, 0x5da, 0x5eb, 0x5fb, 0x60c, 0x61c, 0x62c,
-0x63c, 0x64b, 0x65b, 0x66a, 0x679, 0x688, 0x696, 0x6a5,
-0x6b3, 0x6c1, 0x6ce, 0x6dc, 0x6e9, 0x6f6, 0x702, 0x70f,
-0x71b, 0x726, 0x732, 0x73d, 0x748, 0x753, 0x75d, 0x767,
-0x771, 0x77b, 0x784, 0x78d, 0x795, 0x79d, 0x7a5, 0x7ad,
-0x7b4, 0x7bb, 0x7c2, 0x7c8, 0x7ce, 0x7d4, 0x7d9, 0x7de,
-0x7e3, 0x7e7, 0x7eb, 0x7ee, 0x7f2, 0x7f4, 0x7f7, 0x7f9,
-0x7fb, 0x7fd, 0x7fe, 0x7fe, 0x7ff, 0x7ff, 0x7ff, 0x7fe,
-0x7fd, 0x7fc, 0x7fa, 0x7f8, 0x7f6, 0x7f3, 0x7f0, 0x7ed,
-0x7e9, 0x7e5, 0x7e0, 0x7dc, 0x7d6, 0x7d1, 0x7cb, 0x7c5,
-0x7bf, 0x7b8, 0x7b1, 0x7a9, 0x7a1, 0x799, 0x791, 0x788,
-0x77f, 0x776, 0x76c, 0x762, 0x758, 0x74e, 0x743, 0x738,
-0x72c, 0x721, 0x715, 0x708, 0x6fc, 0x6ef, 0x6e2, 0x6d5,
-0x6c7, 0x6ba, 0x6ac, 0x69d, 0x68f, 0x680, 0x671, 0x662,
-0x653, 0x643, 0x634, 0x624, 0x614, 0x603, 0x5f3, 0x5e2,
-0x5d1, 0x5c0, 0x5af, 0x59e, 0x58d, 0x57b, 0x569, 0x558,
-0x546, 0x534, 0x522, 0x50f, 0x4fd, 0x4eb, 0x4d8, 0x4c5,
-0x4b3, 0x4a0, 0x48d, 0x47b, 0x468, 0x455, 0x442, 0x42f,
-0x41c, 0x409, 0x3f6, 0x3e3, 0x3d0, 0x3bd, 0x3aa, 0x397,
-0x384, 0x372, 0x35f, 0x34c, 0x33a, 0x327, 0x314, 0x302,
-0x2f0, 0x2dd, 0x2cb, 0x2b9, 0x2a7, 0x296, 0x284, 0x272,
-0x261, 0x250, 0x23f, 0x22e, 0x21d, 0x20c, 0x1fc, 0x1eb,
-0x1db, 0x1cb, 0x1bc, 0x1ac, 0x19d, 0x18e, 0x17f, 0x170,
-0x162, 0x153, 0x145, 0x138, 0x12a, 0x11d, 0x110, 0x103,
-0xf7, 0xea, 0xde, 0xd3, 0xc7, 0xbc, 0xb1, 0xa7,
-0x9d, 0x93, 0x89, 0x80, 0x77, 0x6e, 0x66, 0x5e,
-0x56, 0x4e, 0x47, 0x40, 0x3a, 0x34, 0x2e, 0x29,
-0x23, 0x1f, 0x1a, 0x16, 0x12, 0x0f, 0x0c, 0x09,
-0x07, 0x05, 0x03, 0x02, 0x01, 0x00, 0x00, 0x00,
-0x01, 0x01, 0x02, 0x04, 0x06, 0x08, 0x0b, 0x0d,
-0x11, 0x14, 0x18, 0x1c, 0x21, 0x26, 0x2b, 0x31,
-0x37, 0x3d, 0x44, 0x4b, 0x52, 0x5a, 0x62, 0x6a,
-0x72, 0x7b, 0x84, 0x8e, 0x98, 0xa2, 0xac, 0xb7,
-0xc2, 0xcd, 0xd9, 0xe4, 0xf0, 0xfd, 0x109, 0x116,
-0x123, 0x131, 0x13e, 0x14c, 0x15a, 0x169, 0x177, 0x186,
-0x195, 0x1a4, 0x1b4, 0x1c3, 0x1d3, 0x1e3, 0x1f3, 0x204,
-0x214, 0x225, 0x236, 0x247, 0x258, 0x26a, 0x27b, 0x28d,
-0x29e, 0x2b0, 0x2c2, 0x2d4, 0x2e7, 0x2f9, 0x30b, 0x31e,
-0x330, 0x343, 0x356, 0x368, 0x37b, 0x38e, 0x3a1, 0x3b4,
-0x3c7, 0x3da, 0x3ed};
+#define TRIG_PIN 15
+
+const uint32_t lookup_table[340] = {
+    18,    37,    56,    75,    94,   113,   132,
+   151,   170,   188,   207,   226,   245,   264,   282,
+   301,   320,   339,   357,   376,   394,   413,   431,
+   450,   468,   487,   505,   523,   542,   560,   578,
+   596,   614,   632,   650,   668,   686,   704,   722,
+   739,   757,   774,   792,   809,   827,   844,   861,
+   878,   895,   912,   929,   946,   963,   979,   996,
+  1013,  1029,  1045,  1061,  1078,  1094,  1110,  1125,
+  1141,  1157,  1172,  1188,  1203,  1219,  1234,  1249,
+  1264,  1279,  1293,  1308,  1322,  1337,  1351,  1365,
+  1379,  1393,  1407,  1421,  1434,  1448,  1461,  1474,
+  1487,  1500,  1513,  1526,  1538,  1551,  1563,  1575,
+  1587,  1599,  1611,  1622,  1634,  1645,  1656,  1667,
+  1678,  1689,  1700,  1710,  1721,  1731,  1741,  1751,
+  1760,  1770,  1779,  1789,  1798,  1807,  1816,  1824,
+  1833,  1841,  1849,  1857,  1865,  1873,  1881,  1888,
+  1895,  1902,  1909,  1916,  1923,  1929,  1935,  1941,
+  1947,  1953,  1959,  1964,  1969,  1974,  1979,  1984,
+  1989,  1993,  1997,  2001,  2005,  2009,  2013,  2016,
+  2019,  2022,  2025,  2028,  2030,  2033,  2035,  2037,
+  2039,  2040,  2042,  2043,  2044,  2045,  2046,  2047,
+  2047,  2047,  2048,  2047,  2047,  2047,  2046,  2045,
+  2044,  2043,  2042,  2040,  2039,  2037,  2035,  2033,
+  2030,  2028,  2025,  2022,  2019,  2016,  2013,  2009,
+  2005,  2001,  1997,  1993,  1989,  1984,  1979,  1974,
+  1969,  1964,  1959,  1953,  1947,  1941,  1935,  1929,
+  1923,  1916,  1909,  1902,  1895,  1888,  1881,  1873,
+  1865,  1857,  1849,  1841,  1833,  1824,  1816,  1807,
+  1798,  1789,  1779,  1770,  1760,  1751,  1741,  1731,
+  1721,  1710,  1700,  1689,  1678,  1667,  1656,  1645,
+  1634,  1622,  1611,  1599,  1587,  1575,  1563,  1551,
+  1538,  1526,  1513,  1500,  1487,  1474,  1461,  1448,
+  1434,  1421,  1407,  1393,  1379,  1365,  1351,  1337,
+  1322,  1308,  1293,  1279,  1264,  1249,  1234,  1219,
+  1203,  1188,  1172,  1157,  1141,  1125,  1110,  1094,
+  1078,  1061,  1045,  1029,  1013,   996,   979,   963,
+   946,   929,   912,   895,   878,   861,   844,   827,
+   809,   792,   774,   757,   739,   722,   704,   686,
+   668,   650,   632,   614,   596,   578,   560,   542,
+   523,   505,   487,   468,   450,   431,   413,   394,
+   376,   357,   339,   320,   301,   282,   264,   245,
+   226,   207,   188,   170,   151,   132,   113,    94,
+    75,    56,    37,    18, 0};
 
 bool pos = 0;
 
-uint sm;
+uint low_sm;
+uint high_sm;
+int low_pwm_dma_chan;
+int high_pwm_dma_chan;
 
 void dma_handler(){
     // Clear the interrupt request.
-    dma_channel_set_read_addr(pwm_dma_chan, &lookup_table[sm], true);
-    dma_hw->ints0 = 1u << pwm_dma_chan;
+    dma_channel_set_read_addr(low_pwm_dma_chan, &lookup_table[low_sm], true);
+    dma_channel_set_read_addr(high_pwm_dma_chan, &lookup_table[low_sm], false);
+    dma_hw->ints0 = 1u << high_pwm_dma_chan;
     gpio_put(TRIG_PIN, pos);
     pos = !pos;
     //restart transfer
-    
 }
 
 void pio_pwm_set_period(PIO pio, uint sm, uint32_t period) {
@@ -86,38 +89,71 @@ int main()
     // Find a free state machine on our chosen PIO (erroring if there are
     // none). Configure it to run our program, and start it, using the
     // helper function we included in our .pio file.
-    sm = pio_claim_unused_sm(pio, true);
+    low_sm = pio_claim_unused_sm(pio, true);
 
-    pwm_program_init(pio, sm, offset, 10);
-    pio_pwm_set_period(pio, sm, (2048) - 1);
+    pwm_program_init(pio, low_sm, offset, 0);
+    pio_pwm_set_period(pio, low_sm, (2048-1));
 
-    // Setup DMA channel to drive the PWM
-    pwm_dma_chan = dma_claim_unused_channel(true);
+    high_sm = pio_claim_unused_sm(pio, true);
 
-    dma_channel_config pwm_dma_chan_config = dma_channel_get_default_config(pwm_dma_chan);
+    pwm_program_init(pio, high_sm, offset, 2);
+    pio_pwm_set_period(pio, high_sm, (2048-1));
+
+    // Reserve DMA channel to drive the PWM
+    low_pwm_dma_chan = dma_claim_unused_channel(true);
+    high_pwm_dma_chan = dma_claim_unused_channel(true);
+
+    // ============= LOW PWM DMA =============
+    dma_channel_config low_pwm_dma_chan_config = dma_channel_get_default_config(low_pwm_dma_chan);
     // Transfers 32-bits at a time, increment read address so we pick up a new fade value each
     // time, don't increment writes address so we always transfer to the same PWM register.
-    channel_config_set_transfer_data_size(&pwm_dma_chan_config, DMA_SIZE_32);
-    channel_config_set_read_increment(&pwm_dma_chan_config, true);
-    channel_config_set_write_increment(&pwm_dma_chan_config, false);
+    channel_config_set_transfer_data_size(&low_pwm_dma_chan_config, DMA_SIZE_32);
+    channel_config_set_read_increment(&low_pwm_dma_chan_config, true);
+    channel_config_set_write_increment(&low_pwm_dma_chan_config, false);
+    //start high when finished
+    channel_config_set_chain_to(&low_pwm_dma_chan_config, high_pwm_dma_chan),
     // Transfer when PWM slice that is connected to the LED asks for a new value
-    channel_config_set_dreq(&pwm_dma_chan_config, DREQ_PIO0_TX0);
+    channel_config_set_dreq(&low_pwm_dma_chan_config, DREQ_PIO0_TX0 + low_sm);
 
-    // Setup the channel and set it going
     dma_channel_configure(
-        pwm_dma_chan,
-        &pwm_dma_chan_config,
-        &pio0_hw->txf[sm], // Write to PWM counter compare
+        low_pwm_dma_chan,
+        &low_pwm_dma_chan_config,
+        &pio0_hw->txf[low_sm], // Write to PWM counter compare
         &lookup_table[0], // Read values from fade buffer
-        169,
-        true // Start immediately.
+        340,
+        false // Start immediately.
     );
 
-    dma_channel_set_irq0_enabled(pwm_dma_chan, true);
+    // ============= HIGH PWM DMA =============
+
+    dma_channel_config high_pwm_dma_chan_config = dma_channel_get_default_config(high_pwm_dma_chan);
+    // Transfers 32-bits at a time, increment read address so we pick up a new fade value each
+    // time, don't increment writes address so we always transfer to the same PWM register.
+    channel_config_set_transfer_data_size(&high_pwm_dma_chan_config, DMA_SIZE_32);
+    channel_config_set_read_increment(&high_pwm_dma_chan_config, true);
+    channel_config_set_write_increment(&high_pwm_dma_chan_config, false);
+    //start high when finished
+    //channel_config_set_chain_to(&high_pwm_dma_chan_config, low_pwm_dma_chan),
+    // Transfer when PWM slice that is connected to the LED asks for a new value
+    channel_config_set_dreq(&high_pwm_dma_chan_config, DREQ_PIO0_TX0 + high_sm);
+
+    dma_channel_configure(
+        high_pwm_dma_chan,
+        &high_pwm_dma_chan_config,
+        &pio0_hw->txf[high_sm], // Write to PWM counter compare
+        &lookup_table[0], // Read values from fade buffer
+        340,
+        false // Start immediately.
+    );
+
+    dma_channel_set_irq0_enabled(high_pwm_dma_chan, true);
 
     // Configure the processor to run dma_handler() when DMA IRQ 0 is asserted
     irq_set_exclusive_handler(DMA_IRQ_0, dma_handler);
+
     irq_set_enabled(DMA_IRQ_0, true);
+
+    dma_channel_start(low_pwm_dma_chan);
 
     while(true) {
         tight_loop_contents();
